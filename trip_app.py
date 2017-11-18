@@ -73,11 +73,11 @@ class User(Resource):
 
         # pdb.set_trace()
 
-        return(new_user, 200, {"Content-Type": "application/json", "User": "Tony TJ"})
+        return(new_user, 200, {"Content-Type": "application/json", "User": "TJ"})
 
     def patch(self):
 
-        name = request.args.get('user')
+        name = request.args.get('name')
 
         users_collection = app.db.users
 
@@ -92,7 +92,20 @@ class User(Resource):
             return_document=ReturnDocument.AFTER
         )
 
-        return(new_user, 200, {"Content-Type": "application/json", "User": "Tony TJ"})
+        return(new_user, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def delete(self):
+
+        name = request.args.get('name')
+
+        users_collection = app.db.users
+
+        result = users_collection.find_one_and_delete({'name': name})
+
+        # import pdb; pdb.set_trace
+        
+        return("User Deleted", 200, {"Content-Type": "application/json", "User": "TJ"})
+
 
 
 class Trip(Resource):
@@ -120,7 +133,7 @@ class Trip(Resource):
 
         # pdb.set_trace()
 
-        return(new_destination, 200, {"Content-Type": "application/json", "User": "Tony TJ"})
+        return(new_destination, 200, {"Content-Type": "application/json", "User": "TJ"})
 
     def put(self):
 
@@ -135,7 +148,7 @@ class Trip(Resource):
 
         # pdb.set_trace()
 
-        return(result, 200, {"Content-Type": "application/json", "User": "Tony TJ"})
+        return(result, 200, {"Content-Type": "application/json", "User": "TJ"})
 
     def patch(self):
 
@@ -154,7 +167,18 @@ class Trip(Resource):
             return_document=ReturnDocument.AFTER
         )
 
-        return(result, 200, {"Content-Type": "application/json", "User": "Tony TJ"})
+        return(result, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def delete(self):
+
+        destination = request.args.get('destination')
+
+        trips_collection = app.db.trips
+
+        result = trips_collection.find_one_and_delete(
+            {'destination': destination}
+            )
+        return ("Trip Deleted", 200, {"Content-Type": "application/json", "User": "TJ"})
 
 
 api.add_resource(User, '/users')

@@ -22,7 +22,17 @@ class FlaskrTestCase(unittest.TestCase):
         ## We do this to clear our database before each test runs
         db.drop_collection('users')
 
-    def test_getting_a_user(self):
+
+    def test_get_a_user(self):
+
+    	response = self.app.get('/users',
+    		query_string=dict(name='TJ King'))
+
+    	response_json = json.loads(response.data.decode())
+
+    	self.assertEqual(response.status_code, 200)
+
+    def test_post_a_user(self):
 
     ## Post 2 users to database
     	self.app.post('/users',
@@ -46,6 +56,78 @@ class FlaskrTestCase(unittest.TestCase):
     ## Here we check the status code
     	self.assertEqual(response.status_code, 200)
 
+    def test_updating_user(self):
+
+    	self.app.post('/users',
+    			headers=None,
+    			data=json.dumps(dict(
+    				name="TJ King",
+    				email="tia@email.com"
+    				)),
+    			content_type='application/json')
+
+    	self.app.put('/users',
+    				headers=None,
+    				data=json.dumps(dict(
+    					name="Tia King")),
+    			content_type='application/json')
+
+    	response = self.app.get('/users',
+    						query_string=dict(name="Tia King")
+    			)
+
+    	response_json = json.loads(response.data.decode())
+    	self.assertEqual(response.status_code, 200)
+
+    def test_replace_user(self):
+    	self.app.post('/users',
+    			headers=None,
+    			data=json.dumps(dict(
+    				name="TJ King",
+    				age=10
+    				)),
+    			content_type='application/json')
+
+    	self.app.patch('/users',
+    			headers=None,
+    			data=json.dumps(dict(
+    				name="Tia King",
+    				age=9)),
+    			content_type='application/json')
+
+    	response = self.app.get('/users',
+    						query_string=dict(name="Tia King"))
+
+    	response_json = json.loads(response.data.decode())
+    	self.assertEqual(response.status_code, 200)
+
+    def test_delete_user(self):
+    	self.app.post('/users',
+    			headers=None,
+    			data=json.dumps(dict(
+    				name="TJ King",
+    				)),
+    			content_type='application/json')
+
+    	response = self.app.delete('/users',
+    			headers=None,
+    			data=json.dumps(dict(
+    				name="TJ King",
+    				)),
+    			content_type='application/json')
+    	# response = self.app.get('users', 
+    	# 					query_string=dict(name="TJ King"))
+    	
+    	response_json = json.loads(response.data.decode())
+    	self.assertEqual(response.status_code, 200)
+
+    def test_get_a_trip(self):
+    	response = self.app.get('/trips',
+    		query_string=dict(destination='Seoul'))
+
+    	response_json = json.loads(response.data.decode())
+
+    	self.assertEqual(response.status_code, 200)
 
 if __name__ == '__main__':
     unittest.main()

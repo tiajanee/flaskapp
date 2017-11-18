@@ -11,7 +11,7 @@ mongo = MongoClient('localhost', 27017)
 
 app = Flask(__name__)
 
-app.db = mongo.test
+app.db = mongo.local
 # @app.route('/person')
 # def person_route():
 #     person = {"name": "Eliel", 'age': 23}
@@ -116,7 +116,7 @@ def get_a_course_number():
 
     #pdb.set_trace()
     result = courses_collection.find_one({"course_number": course_number})
-    json_result = dumps(result)
+    json_result = json.dumps(result)
 
     if result is None:
         return("we aint got that course", 400, None)
