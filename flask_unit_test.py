@@ -129,5 +129,91 @@ class FlaskrTestCase(unittest.TestCase):
 
     	self.assertEqual(response.status_code, 200)
 
+    def test_post_a_trip(self):
+
+    	self.app.post('/trips',
+                      headers=None,
+                      data=json.dumps(dict(
+                          destination="Seoul",
+                          trip_day_amount=5
+                      )),
+                      content_type='application/json')
+    
+    ## 3 Make a get request to fetch the posted user
+
+    	response = self.app.get('/trips',
+                            query_string=dict(destination="Seoul")
+                        )
+                                
+    # Decode reponse
+    	response_json = json.loads(response.data.decode())
+    
+    ## Actual test to see if GET request was succesful
+    ## Here we check the status code
+    	self.assertEqual(response.status_code, 200)
+
+
+    def test_updating_trip(self):
+
+    	self.app.post('/trips',
+    			headers=None,
+    			data=json.dumps(dict(
+    				destination="Seoul",
+                     trip_day_amount=5
+    				)),
+    			content_type='application/json')
+
+    	self.app.put('/trips',
+    				headers=None,
+    				data=json.dumps(dict(
+    					destination="San Francisco",
+                          trip_day_amount=5)),
+    				content_type='application/json')
+
+    	response = self.app.get('/trips',
+    						query_string=dict(destination="San Francisco")
+    			)
+
+    	response_json = json.loads(response.data.decode())
+    	self.assertEqual(response.status_code, 200)
+
+
+    def test_replace_a_trip(self):
+		self.app.post('/trips',
+    			headers=None,
+    			data=json.dumps(dict(
+    				destination="Seoul",
+                    trip_day_amount=5
+    				)),
+    			content_type='application/json')
+		self.app.patch('/trips',
+    			headers=None,
+    			data=json.dumps(dict(
+    				destination="San Francisco",
+    				trip_day_amount=9)),
+    			content_type='application/json')
+		response = self.app.get('/trips',
+    						query_string=dict(name="San Francisco"))
+		response_json = json.loads(response.data.decode())
+		self.assertEqual(response.status_code, 200)
+
+    def test_delete_a_trip(self):
+    	self.app.post('/trips',
+    			headers=None,
+    			data=json.dumps(dict(
+    				destination="Seoul",
+    				)),
+    			content_type='application/json')
+    	response = self.app.delete('/trips',
+    			headers=None,
+    			data=json.dumps(dict(
+    				destination="Seoul",
+    				)),
+    			content_type='application/json')
+    	response_json = json.loads(response.data.decode())
+    	self.assertEqual(response.status_code, 200)
+
+
+
 if __name__ == '__main__':
     unittest.main()
