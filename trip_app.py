@@ -103,6 +103,8 @@ class User(Resource):
         result = users_collection.find_one_and_delete({'name': name})
 
         # import pdb; pdb.set_trace
+        if result is None:
+            print("wow this bitch is still here")
         
         return("User Deleted", 200, {"Content-Type": "application/json", "User": "TJ"})
 
