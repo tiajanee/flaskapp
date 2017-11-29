@@ -9,6 +9,8 @@ from pymongo import MongoClient
 from bson import Binary, Code
 from bson.json_util import dumps
 
+import bcrypt
+
 from encoder import JSONEncoder
 app = Flask(__name__)
 api = Api(app)
@@ -19,43 +21,107 @@ mongo = MongoClient('localhost', 27017)
 # 3
 app.db = mongo.local
 
+app.bcrypt_rounds = 5
+
 
 class User(Resource):
-    #functioning
     def post(self):
 
-        name = request.args.get('name')
+        #CREATE A USER
 
+     
         new_user = request.json
-
         users_collection = app.db.users
 
-        result = users_collection.insert_one(new_user)
+        email = new_user["email"]
+        password = new_user["password"]
+        check_saved_user = users_collection.find_one( {"email": email} )
+        if email == check_saved_user:
+            return("This email is taken.", 200, None)
+        if email != check_saved_user:
+            encodedPassword = password.encode('utf-8')
 
-        user = users_collection.find_one({'name': name})
+            hashed = bcrypt.hashpw(
+                encodedPassword, bcrypt.gensalt(app.bcrypt_rounds)
+            )
+            new_user[password] = hashed.decode()
+            result = users_collection.insert_one(new_user)
+            return("New user created.", 200, None)
+
+        #
+
+        # name = request.args.get('name')
+
+        # new_user = request.json
+
+        # users_collection = app.db.users
+
+        # result = users_collection.insert_one(new_user)
+
+        # user = users_collection.find_one({'name': name})
 
         #json_result = JSONEncoder().encode(result)
 
-        return (new_user, 200, None)
-    #functioning
+        #return (new_user, 200, None)
     def get(self):
 
-        # 1 Get Url params
-        name = request.args.get('name')
+        #LOG IN
 
-        # 2 Our users users collection
+        #get users collection from DB
         users_collection = app.db.users
 
-        # 3 Find document in users collection
-        result = users_collection.find_one(
-            {'name': name}
-        )
+        #get the email and password from the headers
+        email = request.authorization.username
+        password = request.authorization.password
 
-        # 4 Convert result to json from python dict
-        #json_result = JSONEncoder().encode(result)
+        #encode the password sent by the attempted user
+        encoded_password = password.encode('utf-8')
 
-        # 5 Return json as part of the response body
-        return (result, 200, None)
+
+        #find the user that has that possess that email
+        check_saved_user = users_collection.find_one({"email": email})
+        #login will fail if user tries to retrieve credentials not in the database
+        if check_saved_user == None:
+            return("No users with those crediential exist.", 404, None)
+        #find the password that matches that user
+        check_saved_user_password = check_saved_user["password"]
+
+        #encode the password 
+        check_saved_user_password = check_saved_user_password.encode('utf-8')
+
+        #check to see if the encoded inputted password matches encoded password in the database
+        if bcrypt.checkpw(encoded_password, check_saved_user_password) == True:
+             return("Login Successful", 200, None)
+        #accounts for any other edge cases
+        else:
+            return("Login Unsuccessful", 404, None)
+        
+
+        # if email != check_saved_user_email and hashed_password != check_saved_user_password:
+        #     return("Login Unsuccessful", 500, None)
+        # if email == check_saved_user_email and hashed_password != check_saved_user_password:
+        #     return("Incorrect password", 500, None)
+        # if email == check_saved_user_email and hashed_password == check_saved_user_password:
+           
+
+
+
+        # # 1 Get Url params
+        # name = request.args.get('name')
+
+        # # 2 Our users users collection
+        # users_collection = app.db.users
+
+        # # 3 Find document in users collection
+        # result = users_collection.find_one(
+        #     {'name': name}
+        # )
+
+        # # 4 Convert result to json from python dict
+        # #json_result = JSONEncoder().encode(result)
+
+        # # 5 Return json as part of the response body
+        # return (result, 200, None)
 
     def put(self):
 
