@@ -29,40 +29,37 @@ class User(Resource):
 
         #CREATE A USER
 
-     
+        #getting the data from the body
         new_user = request.json
         users_collection = app.db.users
 
+        #accessing the data and saving them in variables 
         email = new_user["email"]
         password = new_user["password"]
+
+        #check if the user already exists 
         check_saved_user = users_collection.find_one( {"email": email} )
-        if email == check_saved_user:
-            return("This email is taken.", 200, None)
+
+        #if the inputted email already matches a email and the database
+        #alert user that the email has been taken 
+        if check_saved_user is not None:
+            return("This email is taken.", 500, None)
+
+        #if the email doesn't already exists in the database
+        #store email and encode and hash password to be saved in database
         if email != check_saved_user:
-            encodedPassword = password.encode('utf-8')
+            encoded_password = password.encode('utf-8')
 
             hashed = bcrypt.hashpw(
-                encodedPassword, bcrypt.gensalt(app.bcrypt_rounds)
+                encoded_password, bcrypt.gensalt(app.bcrypt_rounds)
             )
-            new_user[password] = hashed.decode()
+            new_user["password"] = hashed.decode()
+            #insert user and user details to database
             result = users_collection.insert_one(new_user)
-            return("New user created.", 200, None)
+            
+        return("New user created.", 200, None)
 
-        #
-
-        # name = request.args.get('name')
-
-        # new_user = request.json
-
-        # users_collection = app.db.users
-
-        # result = users_collection.insert_one(new_user)
-
-        # user = users_collection.find_one({'name': name})
-
-        #json_result = JSONEncoder().encode(result)
-
-        #return (new_user, 200, None)
+        
     def get(self):
 
         #LOG IN
@@ -81,8 +78,8 @@ class User(Resource):
         #find the user that has that possess that email
         check_saved_user = users_collection.find_one({"email": email})
         #login will fail if user tries to retrieve credentials not in the database
-        if check_saved_user == None:
-            return("No users with those crediential exist.", 404, None)
+        if check_saved_user is None:
+            return("No users with those credientials exist.", 404, None)
         #find the password that matches that user
         check_saved_user_password = check_saved_user["password"]
 
@@ -94,34 +91,9 @@ class User(Resource):
              return("Login Successful", 200, None)
         #accounts for any other edge cases
         else:
-            return("Login Unsuccessful", 404, None)
+            return("Login Unsuccessful", 401, None)
         
 
-        # if email != check_saved_user_email and hashed_password != check_saved_user_password:
-        #     return("Login Unsuccessful", 500, None)
-        # if email == check_saved_user_email and hashed_password != check_saved_user_password:
-        #     return("Incorrect password", 500, None)
-        # if email == check_saved_user_email and hashed_password == check_saved_user_password:
-           
-
-
-
-        # # 1 Get Url params
-        # name = request.args.get('name')
-
-        # # 2 Our users users collection
-        # users_collection = app.db.users
-
-        # # 3 Find document in users collection
-        # result = users_collection.find_one(
-        #     {'name': name}
-        # )
-
-        # # 4 Convert result to json from python dict
-        # #json_result = JSONEncoder().encode(result)
-
-        # # 5 Return json as part of the response body
-        # return (result, 200, None)
 
     def put(self):
 
