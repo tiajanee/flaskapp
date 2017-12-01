@@ -1,130 +1,242 @@
 import json
-from flask import Flask, request
+from flask import Flask, request, make_response, xcg
+from flask_restful import Resource, Api
+from pymongo import ReturnDocument
 import pdb
-
+# 1
 from pymongo import MongoClient
-#from encoder import JSONEncoder
+# For serialization
 from bson import Binary, Code
 from bson.json_util import dumps
 
-mongo = MongoClient('localhost', 27017)
+import bcrypt
 
+from encoder import JSONEncoder
 app = Flask(__name__)
+api = Api(app)
 
-app.db = mongo.local
-# @app.route('/person')
-# def person_route():
-#     person = {"name": "Eliel", 'age': 23}
-#     json_person = json.dumps(person)
-#     return (json_person, 200, None)
+# 2
+mongo = MongoClient('mongodb://wowza:wowza@ds125556.mlab.com:25556/trip_planner_production')
 
+# 3
 
-@app.route('/person')
-def person_route():
-    ##cpdb.set_trace()
-    person = {"name": "Eliel", 'age': 23}
-    json_person = json.dumps(person)
-    return (json_person, 200, None)
+#saving reference to database in a variable  
+app.db = mongo.trip_planner_production
+
+#rounds of encryption cd 
+app.bcrypt_rounds = 6
 
 
-@app.route('/my_page')
-def page_route():
-	#pdb.set_trace()
-	line_of_text = "This here is a motherfucking line of text"
-	return (line_of_text, 200, None)
+class User(Resource):
+    def post(self):
 
-@app.route('/pets')
-def pets_route():
-	#pdb.set_trace()
-	pets_list = [{"Best Pet": "Turtle"}, {"Second Best Pet" :"Hamster"}, {"Third Best Pet": "Penguin"}]
-	json_pets = json.dumps(pets_list)
-	return (json_pets, 200, None)
+        #CREATE A USER
 
-@app.route('/users')
-def get_users_route():
-    #gets the name of the user
+        #getting the data from the body
+        new_user = request.json
+        users_collection = app.db.users
 
-    name = request.args.get('name')
+        #accessing the data and saving them in variables 
+        email = new_user["email"]
+        password = new_user["password"]
 
-    #debugging
-    pdb.set_trace()
+        #check if the user already exists 
+        check_saved_user = users_collection.find_one( {"email": email} )
 
-    #puts users into a collection
-    users_collection = app.db.users
+        #if the inputted email already matches a email and the database
+        #alert user that the email has been taken 
+        if check_saved_user is not None:
+            return("This email is taken.", 500, None)
 
-    #mongo returns name of user from collection, returns as dict
-    result = users_collection.find_one(
-        {'name': name}
-    )
-    #saves result into serialized json object
-    json_result = dumps(result)
+        #if the email doesn't already exists in the database
+        #store email and encode and hash password to be saved in database
+        if email != check_saved_user:
+            encoded_password = password.encode('utf-8')
 
-    #sends result to postman
-    return(json_result, 200, None)
+            hashed = bcrypt.hashpw(
+                encoded_password, bcrypt.gensalt(app.bcrypt_rounds)
+            )
+            new_user["password"] = hashed.decode()
+            #insert user and user details to database
+            result = users_collection.insert_one(new_user)
+            
+        return("New user created.", 200, None)
 
-@app.route('/sunsign')
-def get_sun_sign():
-    sun_sign = request.args.get('sun sign')
+        
+    def get(self):
 
-    users_collection = app.db.users
+        #LOG IN
 
-    result = users_collection.find_one(
-        {'sun sign': sun_sign}
-    )
-    json_result = json.dumps(result)
+        #get users collection from DB
+        users_collection = app.db.users
 
-    return(json_result, 200, None)
+        #get the email and password from the headers
+        email = request.authorization.username
+        password = request.authorization.password
 
-@app.route('/courses', methods=['POST'])
-def post_a_course():
-    #get reques the json body
-    course = request.json
+        #encode the password sent by the attempted user
+        encoded_password = password.encode('utf-8')
 
-    #getting courses collection
-    courses_collection = app.db.courses
 
-   
+        #find the user that has that possess that email
+        check_saved_user = users_collection.find_one({"email": email})
+        #login will fail if user tries to retrieve credentials not in the database
+        if check_saved_user is None:
+            return("No users with those credientials exist.", 404, None)
+        #find the password that matches that user
+        check_saved_user_password = check_saved_user["password"]
 
-    
-    #insert post into courses collection
-    result = courses_collection.insert_one(course)
-        #{"course": course["course"]}
-       
+        #encode the password 
+        check_saved_user_password = check_saved_user_password.encode('utf-8')
 
-    # pdb.set_trace()
+        #check to see if the encoded inputted password matches encoded password in the database
+        if bcrypt.checkpw(encoded_password, check_saved_user_password) == True:
+             return("Login Successful", 200, None)
+        #accounts for any other edge cases
+        else:
+            return("Login Unsuccessful", 401, None)
+            #hey
+        
 
-    #serializes JSON body
-    json_post = dumps(course)
 
-    #returns status code and sends posts to database
-    return(json_post, 201, None)
-    
+    def put(self):
 
-#homework due monday
-    '''
-    Handle a get request to "courses" that looks for a course number from the url parameter, returns a 400 error if the course number 
-    parameter doesn't exit, and uses the course number to search our database courses collection for a document with the specified 
-    course number. Return a 200 and the course if its found.
-    '''
-@app.route('/courses', methods=['GET'])
-def get_a_course_number():
+        name = request.args.get('name')
 
-    course_number= request.args.get('course_number', type=int)
-    #pdb.set_trace()
+        users_collection = app.db.users
 
-    courses_collection = app.db.courses
+        # 2 parsed Request Body
+        new_user = request.json
 
-    #pdb.set_trace()
-    result = courses_collection.find_one({"course_number": course_number})
-    json_result = json.dumps(result)
+        result = users_collection.find_one_and_replace(
+            {'name': name}, 
+            new_user, 
+            return_document=ReturnDocument.AFTER)
 
-    if result is None:
-        return("we aint got that course", 400, None)
-    else:
-        return(json_result, 200, None)
+        # pdb.set_trace()
+
+        return(new_user, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def patch(self):
+
+        name = request.args.get('name')
+
+        users_collection = app.db.users
+
+        # 2 parsed Request Body
+        new_user = request.json
+
+        result = users_collection.find_one_and_update(
+            {'name': new_user},
+            {
+                '$set': {'user': new_user["name"], 'age': new_user["age"]}
+            },
+            return_document=ReturnDocument.AFTER
+        )
+
+        return(new_user, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def delete(self):
+
+        name = request.args.get('name')
+
+        users_collection = app.db.users
+
+        result = users_collection.find_one_and_delete({'name': name})
+
+        # import pdb; pdb.set_trace
+        if result is None:
+            print("wow this bitch is still here")
+        
+        return("User Deleted", 200, {"Content-Type": "application/json", "User": "TJ"})
+
+
+
+class Trip(Resource):
+
+    def get(self):
+        destination = request.args.get('destination')
+
+        trips_collection = app.db.trips
+
+        result = trips_collection.find_one({'destination': destination})
+
+        return (result, 200, None)
+
+    #functioning
+    def post(self):
+
+        trips_collection = app.db.trips
+
+        # 2 parsed Request Body
+        new_destination = request.json
+
+        result = trips_collection.insert_one(new_destination)
+
+        trip = trips_collection.find_one({'_id': result.inserted_id})
+
+        # pdb.set_trace()
+
+        return(new_destination, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def put(self):
+
+        destination = request.args.get('destination')
+
+        trips_collection = app.db.trips
+
+        # 2 parsed Request Body
+        new_destination = request.json
+
+        result = trips_collection.find_one_and_replace({'destination': destination}, new_destination, return_document=ReturnDocument.AFTER)
+
+        # pdb.set_trace()
+
+        return(result, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def patch(self):
+
+        destination = request.args.get('destination')
+
+        trips_collection = app.db.trips
+
+        # 2 parsed Request Body
+        new_destination = request.json
+
+        result = trips_collection.find_one_and_update(
+            {'destination': destination},
+            {
+                '$set': {'destination': new_destination["destination"], 'trip_day_amount': new_destination["trip_day_amount"]}
+            },
+            return_document=ReturnDocument.AFTER
+        )
+
+        return(result, 200, {"Content-Type": "application/json", "User": "TJ"})
+
+    def delete(self):
+
+        destination = request.args.get('destination')
+
+        trips_collection = app.db.trips
+
+        result = trips_collection.find_one_and_delete(
+            {'destination': destination}
+            )
+        return ("Trip Deleted", 200, {"Content-Type": "application/json", "User": "TJ"})
+
+
+api.add_resource(User, '/users')
+
+api.add_resource(Trip, '/trips')
+
+
+@api.representation('application/json')
+def output_json(data, code, headers=None):
+    resp = make_response(JSONEncoder().encode(data), code)
+    resp.headers.extend(headers or {})
+    return resp
+
 
 if __name__ == '__main__':
-	#mongo = MongoClient('localhost', 27017)
-	#app.db = mongo.local
-	app.config["DEBUG"] = True
-	app.run()
+    app.config['TRAP_BAD_REQUEST_ERRORS'] = True
+    app.run(debug=True)
