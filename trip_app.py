@@ -1,5 +1,5 @@
 import json
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, g
 from flask_restful import Resource, Api
 from pymongo import ReturnDocument
 import pdb
@@ -16,12 +16,15 @@ app = Flask(__name__)
 api = Api(app)
 
 # 2
-mongo = MongoClient('localhost', 27017)
+mongo = MongoClient('mongodb://wowza:wowza@ds125556.mlab.com:25556/trip_planner_production')
 
 # 3
-app.db = mongo.local
 
-app.bcrypt_rounds = 5
+#saving reference to database in a variable  
+app.db = mongo.trip_planner_production
+
+#rounds of encryption cd 
+app.bcrypt_rounds = 6
 
 
 class User(Resource):
